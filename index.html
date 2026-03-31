@@ -16,10 +16,13 @@
         const ctx = canvas.getContext('2d');
 
         let score = 0;
-        let gameRunning = false;
+        let gameRunning = true;
 
         // Player rocket
         const player = { x: 120, y: 280, vx: 0, vy: 0, size: 28 };
+
+        // Obstacles
+        let obstacles = [];
 
         const keys = {};
 
@@ -47,6 +50,12 @@
             // Flame
             ctx.fillStyle = '#ff4400';
             ctx.fillRect(player.x - 12, player.y + 5, 14, 8);
+
+            // Obstacles (red danger blocks)
+            ctx.fillStyle = '#ff2222';
+            for (let obs of obstacles) {
+                ctx.fillRect(obs.x, obs.y, 30, 60);
+            }
         }
 
         function update() {
@@ -70,6 +79,36 @@
             if (player.y < 20) player.y = 20;
             if (player.y > 540) player.y = 540;
 
+            // Spawn obstacles
+            if (Math.random() < 0.03) {
+                obstacles.push({
+                    x: canvas.width,
+                    y: Math.random() * 480 + 40
+                });
+            }
+
+            // Move obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= 4;
+                if (obstacles[i].x < -40) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Collision detection
+            for (let obs of obstacles) {
+                if (
+                    player.x < obs.x + 30 &&
+                    player.x + player.size > obs.x &&
+                    player.y < obs.y + 60 &&
+                    player.y + 18 > obs.y
+                ) {
+                    gameRunning = false;
+                    alert(`💥 CRASHED IN THE BASEDVERSE 💥\n\nFinal Score: ${Math.floor(score)}\n\nRefresh to try again 🚀`);
+                    return;
+                }
+            }
+
             score += 1;
         }
 
@@ -79,8 +118,6 @@
             requestAnimationFrame(loop);
         }
 
-        // Start the game immediately (minimal version)
-        gameRunning = true;
         loop();
     </script>
 </body>
