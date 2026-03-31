@@ -24,6 +24,9 @@
         // Obstacles
         let obstacles = [];
 
+        // Based Orbs
+        let orbs = [];
+
         const keys = {};
 
         window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
@@ -56,6 +59,14 @@
             for (let obs of obstacles) {
                 ctx.fillRect(obs.x, obs.y, 30, 60);
             }
+
+            // Based Orbs 💎 (yellow glowing)
+            ctx.fillStyle = '#ffff00';
+            for (let orb of orbs) {
+                ctx.beginPath();
+                ctx.arc(orb.x + 12, orb.y + 12, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         function update() {
@@ -81,21 +92,27 @@
 
             // Spawn obstacles
             if (Math.random() < 0.03) {
-                obstacles.push({
-                    x: canvas.width,
-                    y: Math.random() * 480 + 40
-                });
+                obstacles.push({ x: canvas.width, y: Math.random() * 480 + 40 });
+            }
+
+            // Spawn orbs (less frequent)
+            if (Math.random() < 0.018) {
+                orbs.push({ x: canvas.width, y: Math.random() * 480 + 40 });
             }
 
             // Move obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 obstacles[i].x -= 4;
-                if (obstacles[i].x < -40) {
-                    obstacles.splice(i, 1);
-                }
+                if (obstacles[i].x < -40) obstacles.splice(i, 1);
             }
 
-            // Collision detection
+            // Move orbs
+            for (let i = orbs.length - 1; i >= 0; i--) {
+                orbs[i].x -= 3.2;
+                if (orbs[i].x < -30) orbs.splice(i, 1);
+            }
+
+            // Collision with obstacles → game over
             for (let obs of obstacles) {
                 if (
                     player.x < obs.x + 30 &&
@@ -106,6 +123,20 @@
                     gameRunning = false;
                     alert(`💥 CRASHED IN THE BASEDVERSE 💥\n\nFinal Score: ${Math.floor(score)}\n\nRefresh to try again 🚀`);
                     return;
+                }
+            }
+
+            // Collect orbs
+            for (let i = orbs.length - 1; i >= 0; i--) {
+                let orb = orbs[i];
+                if (
+                    player.x < orb.x + 24 &&
+                    player.x + player.size > orb.x &&
+                    player.y < orb.y + 24 &&
+                    player.y + 18 > orb.y
+                ) {
+                    score += 50;
+                    orbs.splice(i, 1);
                 }
             }
 
