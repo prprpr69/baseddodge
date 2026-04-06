@@ -61,6 +61,7 @@
 
         let score = 0;
         let gameRunning = false;
+        let difficulty = 1;   // new: will slowly increase
 
         // Player rocket
         const player = { x: 120, y: 280, vx: 0, vy: 0, size: 28 };
@@ -139,8 +140,13 @@
             if (player.y < 20) player.y = 20;
             if (player.y > 540) player.y = 540;
 
-            // Spawn obstacles
-            if (Math.random() < 0.03) {
+            // Increase difficulty every 800 frames (~13 seconds)
+            if (score % 800 === 0 && score > 0) {
+                difficulty += 0.15;
+            }
+
+            // Spawn obstacles (gets more frequent with difficulty)
+            if (Math.random() < 0.03 * difficulty) {
                 obstacles.push({ x: canvas.width, y: Math.random() * 480 + 40 });
             }
 
@@ -149,9 +155,10 @@
                 orbs.push({ x: canvas.width, y: Math.random() * 480 + 40 });
             }
 
-            // Move obstacles
+            // Move obstacles (faster with difficulty)
+            const obsSpeed = 4 + difficulty * 0.6;
             for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].x -= 4;
+                obstacles[i].x -= obsSpeed;
                 if (obstacles[i].x < -40) obstacles.splice(i, 1);
             }
 
@@ -200,6 +207,7 @@
             startScreen.style.display = 'none';
             gameRunning = true;
             score = 0;
+            difficulty = 1;
             obstacles = [];
             orbs = [];
             player.x = 120;
@@ -216,7 +224,7 @@
 
         // Show start screen on load
         startScreen.style.display = 'block';
-        loop(); // background stars keep moving even on start screen
+        loop();
     </script>
 </body>
 </html>
