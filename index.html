@@ -18,7 +18,7 @@
             border:2px solid #00ff9d; 
             box-shadow:0 0 20px rgba(0,255,157,0.4); 
         }
-        #startScreen {
+        #startScreen, #gameOverScreen {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -54,10 +54,18 @@
         <button onclick="startGame()">LAUNCH INTO THE BASEDVERSE</button>
     </div>
 
+    <div id="gameOverScreen">
+        <h1>💥 CRASHED 💥</h1>
+        <p id="finalScore">SCORE: 0</p>
+        <button onclick="restartGame()">RELAUNCH 🚀</button>
+    </div>
+
     <script>
         const canvas = document.getElementById('c');
         const ctx = canvas.getContext('2d');
         const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreEl = document.getElementById('finalScore');
 
         let score = 0;
         let gameRunning = false;
@@ -69,8 +77,6 @@
         // Game objects
         let obstacles = [];
         let orbs = [];
-
-        // Particle trail for rocket (new in this commit)
         let particles = [];
 
         const keys = {};
@@ -92,7 +98,7 @@
 
             if (!gameRunning) return;
 
-            // Particles (rocket trail)
+            // Particles
             ctx.fillStyle = '#ff8800';
             for (let p of particles) {
                 ctx.globalAlpha = p.life;
@@ -179,7 +185,7 @@
                 if (orbs[i].x < -30) orbs.splice(i, 1);
             }
 
-            // Update & spawn particles (only when moving)
+            // Particles
             if (Math.abs(player.vx) > 1 || Math.abs(player.vy) > 1 || Math.random() < 0.4) {
                 particles.push({
                     x: player.x - 8,
@@ -187,13 +193,9 @@
                     life: 1.0
                 });
             }
-
-            // Update particles
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].life -= 0.08;
-                if (particles[i].life <= 0) {
-                    particles.splice(i, 1);
-                }
+                if (particles[i].life <= 0) particles.splice(i, 1);
             }
 
             // Collision with obstacles
@@ -228,11 +230,13 @@
 
         function gameOver() {
             gameRunning = false;
-            alert(`💥 CRASHED IN THE BASEDVERSE 💥\n\nFinal Score: ${Math.floor(score)}\n\nRefresh to try again 🚀`);
+            finalScoreEl.textContent = `SCORE: ${Math.floor(score)}`;
+            gameOverScreen.style.display = 'block';
         }
 
         function startGame() {
             startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
             gameRunning = true;
             score = 0;
             difficulty = 1;
@@ -243,6 +247,10 @@
             player.y = 280;
             player.vx = 0;
             player.vy = 0;
+        }
+
+        function restartGame() {
+            startGame();   // reuse the same reset logic
         }
 
         function loop() {
