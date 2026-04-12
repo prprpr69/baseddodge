@@ -70,7 +70,7 @@
         let score = 0;
         let gameRunning = false;
         let difficulty = 1;
-        let shake = 0;   // new: screen shake intensity
+        let shake = 0;
 
         // Player rocket
         const player = { x: 120, y: 280, vx: 0, vy: 0, size: 28 };
@@ -116,6 +116,21 @@
             }
             ctx.globalAlpha = 1.0;
 
+            // Based Orbs with pulsing effect (new in this commit)
+            for (let orb of orbs) {
+                const pulse = 12 + Math.sin(score / 5 + orb.x) * 3;   // gentle breathing
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(orb.x + 12, orb.y + 12, pulse, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner bright core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(orb.x + 12, orb.y + 12, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             // Player rocket
             ctx.fillStyle = '#00ff9d';
             ctx.fillRect(player.x, player.y, player.size, 18);
@@ -130,14 +145,6 @@
             ctx.fillStyle = '#ff2222';
             for (let obs of obstacles) {
                 ctx.fillRect(obs.x, obs.y, 30, 60);
-            }
-
-            // Based Orbs 💎
-            ctx.fillStyle = '#ffff00';
-            for (let orb of orbs) {
-                ctx.beginPath();
-                ctx.arc(orb.x + 12, orb.y + 12, 12, 0, Math.PI * 2);
-                ctx.fill();
             }
 
             // Score
@@ -221,7 +228,7 @@
                     player.y < obs.y + 60 &&
                     player.y + 18 > obs.y
                 ) {
-                    shake = 12;        // trigger screen shake
+                    shake = 12;
                     gameOver();
                     return;
                 }
