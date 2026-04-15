@@ -57,6 +57,7 @@
     <div id="gameOverScreen">
         <h1>💥 CRASHED 💥</h1>
         <p id="finalScore">SCORE: 0</p>
+        <p id="highScoreText" style="margin:10px 0; font-size:18px;">HIGH SCORE: 0</p>
         <button onclick="restartGame()">RELAUNCH 🚀</button>
     </div>
 
@@ -66,8 +67,10 @@
         const startScreen = document.getElementById('startScreen');
         const gameOverScreen = document.getElementById('gameOverScreen');
         const finalScoreEl = document.getElementById('finalScore');
+        const highScoreText = document.getElementById('highScoreText');
 
         let score = 0;
+        let highScore = localStorage.getItem('basedDodgeHighScore') || 0;
         let gameRunning = false;
         let difficulty = 1;
         let shake = 0;
@@ -116,15 +119,14 @@
             }
             ctx.globalAlpha = 1.0;
 
-            // Based Orbs with pulsing effect (new in this commit)
+            // Pulsing Based Orbs
             for (let orb of orbs) {
-                const pulse = 12 + Math.sin(score / 5 + orb.x) * 3;   // gentle breathing
+                const pulse = 12 + Math.sin(score / 5 + orb.x) * 3;
                 ctx.fillStyle = '#ffff00';
                 ctx.beginPath();
                 ctx.arc(orb.x + 12, orb.y + 12, pulse, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Inner bright core
                 ctx.fillStyle = '#ffffff';
                 ctx.beginPath();
                 ctx.arc(orb.x + 12, orb.y + 12, 6, 0, Math.PI * 2);
@@ -154,7 +156,6 @@
 
             ctx.restore();
 
-            // Reduce shake
             if (shake > 0) shake *= 0.85;
         }
 
@@ -253,7 +254,15 @@
 
         function gameOver() {
             gameRunning = false;
+            
+            // Update high score
+            if (score > highScore) {
+                highScore = Math.floor(score);
+                localStorage.setItem('basedDodgeHighScore', highScore);
+            }
+            
             finalScoreEl.textContent = `SCORE: ${Math.floor(score)}`;
+            highScoreText.textContent = `HIGH SCORE: ${highScore}`;
             gameOverScreen.style.display = 'block';
         }
 
