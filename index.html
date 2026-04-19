@@ -45,7 +45,7 @@
     </style>
 </head>
 <body>
-    <div id="ui">SCORE: <span id="score">0</span></div>
+    <div id="ui">SCORE: <span id="score">0</span> &nbsp;&nbsp; HIGH: <span id="highscore">0</span></div>
     <div id="start-screen">BASED DODGE<br><span style="font-size:24px;">PRESS SPACE TO LAUNCH 🚀</span></div>
     <canvas id="game" width="800" height="600"></canvas>
 
@@ -53,14 +53,16 @@
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const highscoreElement = document.getElementById('highscore');
         const startScreen = document.getElementById('start-screen');
 
         // Game variables
         let gameRunning = false;
         let score = 0;
+        let highScore = localStorage.getItem('basedDodgeHighScore') || 0;
         let lastTime = 0;
         let frameCount = 0;
-        let difficulty = 1;           // New: tracks difficulty level
+        let difficulty = 1;
         let lastDifficultyIncrease = 0;
 
         // Rocket (player)
@@ -77,6 +79,44 @@
         // Arrays for obstacles and collectibles
         let obstacles = [];
         let orbs = [];
+
+        // Simple Web Audio for sound effects
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playCollectSound() {
+            initAudio();
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.value = 0.3;
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+            oscillator.start();
+            setTimeout(() => {
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                oscillator.stop(audioCtx.currentTime + 0.2);
+            }, 50);
+        }
+
+        function playCrashSound() {
+            initAudio();
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(120, audioCtx.currentTime);
+            gain.gain.value = 0.4;
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+            oscillator.start();
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+            oscillator.stop(audioCtx.currentTime + 0.7);
+        }
 
         // Input handling
         let keys = {};
@@ -104,12 +144,13 @@
             obstacles = [];
             orbs = [];
             startScreen.style.display = 'none';
-            updateScore();
+            updateUI();
             requestAnimationFrame(gameLoop);
         }
 
-        function updateScore() {
+        function updateUI() {
             scoreElement.textContent = Math.floor(score);
+            highscoreElement.textContent = Math.floor(highScore);
         }
 
         function spawnObstacle() {
@@ -134,7 +175,7 @@
 
         function increaseDifficulty() {
             const now = Date.now();
-            if (now - lastDifficultyIncrease > 10000) { // every 10 seconds
+            if (now - lastDifficultyIncrease > 10000) {
                 difficulty += 0.15;
                 lastDifficultyIncrease = now;
             }
@@ -164,7 +205,7 @@
             // Increase difficulty over time
             increaseDifficulty();
 
-            // Spawn obstacles and orbs (spawn rate stays constant, speed increases with difficulty)
+            // Spawn obstacles and orbs
             frameCount++;
             if (frameCount % 45 === 0) spawnObstacle();
             if (frameCount % 38 === 0) spawnOrb();
@@ -181,6 +222,7 @@
                     rocket.y < obs.y + obs.height &&
                     rocket.y + rocket.size > obs.y
                 ) {
+                    playCrashSound();
                     gameOver();
                     return;
                 }
@@ -201,8 +243,9 @@
                 const dy = rocket.y + rocket.size / 2 - orb.y;
                 if (Math.sqrt(dx * dx + dy * dy) < rocket.size / 2 + orb.size / 2) {
                     score += 50;
+                    playCollectSound();
                     orbs.splice(i, 1);
-                    updateScore();
+                    updateUI();
                     continue;
                 }
 
@@ -214,7 +257,7 @@
 
             // Survival score
             score += 0.08 * difficulty;
-            updateScore();
+            updateUI();
         }
 
         function drawBackground() {
@@ -331,7 +374,6 @@
 
         function gameLoop(timestamp) {
             if (!lastTime) lastTime = timestamp;
-            const delta = timestamp - lastTime;
             lastTime = timestamp;
 
             if (gameRunning) {
@@ -344,11 +386,17 @@
 
         function gameOver() {
             gameRunning = false;
-            startScreen.innerHTML = `GAME OVER<br>FINAL SCORE: ${Math.floor(score)}<br><span style="font-size:24px;">PRESS SPACE TO RESTART 🚀</span>`;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('basedDodgeHighScore', Math.floor(highScore));
+            }
+            startScreen.innerHTML = `GAME OVER<br>FINAL SCORE: ${Math.floor(score)}<br>HIGH SCORE: ${Math.floor(highScore)}<br><span style="font-size:24px;">PRESS SPACE TO RESTART 🚀</span>`;
             startScreen.style.display = 'block';
+            updateUI();
         }
 
-        // Initial draw
+        // Initial setup
+        highscoreElement.textContent = Math.floor(highScore);
         drawBackground();
         drawRocket();
     </script>
