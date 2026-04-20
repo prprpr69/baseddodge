@@ -42,10 +42,28 @@
             pointer-events: none;
             z-index: 20;
         }
+        #based-meter {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            width: 200px;
+            height: 12px;
+            background: #222;
+            border: 2px solid #00ff9d;
+            box-shadow: 0 0 10px #00ff9d;
+            overflow: hidden;
+        }
+        #based-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ffff00, #00ff9d);
+            transition: width 0.1s linear;
+        }
     </style>
 </head>
 <body>
     <div id="ui">SCORE: <span id="score">0</span> &nbsp;&nbsp; HIGH: <span id="highscore">0</span></div>
+    <div id="based-meter"><div id="based-fill"></div></div>
     <div id="start-screen">BASED DODGE<br><span style="font-size:24px;">PRESS SPACE TO LAUNCH 🚀</span></div>
     <canvas id="game" width="800" height="600"></canvas>
 
@@ -55,6 +73,7 @@
         const scoreElement = document.getElementById('score');
         const highscoreElement = document.getElementById('highscore');
         const startScreen = document.getElementById('start-screen');
+        const basedFill = document.getElementById('based-fill');
 
         // Game variables
         let gameRunning = false;
@@ -65,6 +84,10 @@
         let difficulty = 1;
         let lastDifficultyIncrease = 0;
 
+        // Based Meter
+        let basedMeter = 0;        // 0 to 100
+        const BASED_MAX = 100;
+
         // Rocket (player)
         let rocket = {
             x: 150,
@@ -73,7 +96,8 @@
             vy: 0,
             size: 40,
             speed: 0.4,
-            friction: 0.92
+            friction: 0.92,
+            boostMultiplier: 1.0   // temporary boost when meter is full
         };
 
         // Arrays for obstacles and collectibles
@@ -118,6 +142,22 @@
             oscillator.stop(audioCtx.currentTime + 0.7);
         }
 
+        function playBoostSound() {
+            initAudio();
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(660, audioCtx.currentTime);
+            gain.gain.value = 0.25;
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+            oscillator.start();
+            setTimeout(() => {
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+                oscillator.stop(audioCtx.currentTime + 0.45);
+            }, 100);
+        }
+
         // Input handling
         let keys = {};
 
@@ -136,11 +176,13 @@
             gameRunning = true;
             score = 0;
             difficulty = 1;
+            basedMeter = 0;
             lastDifficultyIncrease = Date.now();
             rocket.x = 150;
             rocket.y = 300;
             rocket.vx = 0;
             rocket.vy = 0;
+            rocket.boostMultiplier = 1.0;
             obstacles = [];
             orbs = [];
             startScreen.style.display = 'none';
@@ -151,6 +193,7 @@
         function updateUI() {
             scoreElement.textContent = Math.floor(score);
             highscoreElement.textContent = Math.floor(highScore);
+            basedFill.style.width = `${basedMeter}%`;
         }
 
         function spawnObstacle() {
@@ -182,11 +225,12 @@
         }
 
         function update() {
-            // Rocket movement with inertia
-            if (keys['arrowup'] || keys['w']) rocket.vy -= rocket.speed;
-            if (keys['arrowdown'] || keys['s']) rocket.vy += rocket.speed;
-            if (keys['arrowleft'] || keys['a']) rocket.vx -= rocket.speed;
-            if (keys['arrowright'] || keys['d']) rocket.vx += rocket.speed;
+            // Rocket movement with inertia + boost
+            let currentSpeed = rocket.speed * rocket.boostMultiplier;
+            if (keys['arrowup'] || keys['w']) rocket.vy -= currentSpeed;
+            if (keys['arrowdown'] || keys['s']) rocket.vy += currentSpeed;
+            if (keys['arrowleft'] || keys['a']) rocket.vx -= currentSpeed;
+            if (keys['arrowright'] || keys['d']) rocket.vx += currentSpeed;
 
             // Apply friction
             rocket.vx *= rocket.friction;
@@ -243,9 +287,22 @@
                 const dy = rocket.y + rocket.size / 2 - orb.y;
                 if (Math.sqrt(dx * dx + dy * dy) < rocket.size / 2 + orb.size / 2) {
                     score += 50;
+                    basedMeter = Math.min(BASED_MAX, basedMeter + 8); // fill meter
                     playCollectSound();
                     orbs.splice(i, 1);
                     updateUI();
+
+                    // Full meter = temporary boost
+                    if (basedMeter >= BASED_MAX) {
+                        rocket.boostMultiplier = 1.6;
+                        playBoostSound();
+                        // Auto-drain meter over time
+                        setTimeout(() => {
+                            if (gameRunning) rocket.boostMultiplier = 1.0;
+                        }, 2800);
+                        basedMeter = 0;
+                        updateUI();
+                    }
                     continue;
                 }
 
@@ -298,11 +355,11 @@
             ctx.rotate(tilt * Math.PI / 180);
 
             // Rocket body (based green)
-            ctx.fillStyle = '#00ff9d';
+            ctx.fillStyle = rocket.boostMultiplier > 1 ? '#00ffdd' : '#00ff9d';
             ctx.fillRect(-18, -12, 36, 24);
 
             // Nose cone
-            ctx.fillStyle = '#00cc77';
+            ctx.fillStyle = rocket.boostMultiplier > 1 ? '#00aaff' : '#00cc77';
             ctx.beginPath();
             ctx.moveTo(18, 0);
             ctx.lineTo(30, -8);
@@ -310,18 +367,19 @@
             ctx.closePath();
             ctx.fill();
 
-            // Flames 🚀
+            // Flames 🚀 (bigger when boosting)
+            const flameLength = rocket.boostMultiplier > 1 ? 18 : 12;
             ctx.fillStyle = '#ff4400';
             ctx.beginPath();
             ctx.moveTo(-22, -6);
-            ctx.lineTo(-35 - Math.random() * 8, 0);
+            ctx.lineTo(-30 - Math.random() * flameLength, 0);
             ctx.lineTo(-22, 6);
             ctx.fill();
 
             ctx.fillStyle = '#ffaa00';
             ctx.beginPath();
             ctx.moveTo(-20, -3);
-            ctx.lineTo(-30 - Math.random() * 5, 0);
+            ctx.lineTo(-28 - Math.random() * (flameLength - 4), 0);
             ctx.lineTo(-20, 3);
             ctx.fill();
 
